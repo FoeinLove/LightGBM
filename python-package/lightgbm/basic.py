@@ -974,6 +974,7 @@ class Dataset(object):
                         ctypes.c_int(used_indices.shape[0]),
                         c_str(params_str),
                         ctypes.byref(self.handle)))
+                    self.data = self.reference.data
                     if self.group is not None:
                         self.set_group(self.group)
                     if self.get_label() is None:
@@ -1041,7 +1042,8 @@ class Dataset(object):
         if params is None:
             params = self.params
         ret = Dataset(None, reference=self, feature_name=self.feature_name,
-                      categorical_feature=self.categorical_feature, params=params)
+                      categorical_feature=self.categorical_feature, params=params,
+                      free_raw_data=self.free_raw_data)
         ret._predictor = self._predictor
         ret.pandas_categorical = self.pandas_categorical
         ret.used_indices = used_indices
@@ -1374,6 +1376,21 @@ class Dataset(object):
         if self.init_score is None:
             self.init_score = self.get_field('init_score')
         return self.init_score
+
+    def get_data(self):
+        """Get the initial score of the Dataset.
+
+        Returns
+        -------
+        init_score : numpy array or None
+            Init score of Booster.
+        """
+        if self.data is not None and self.used_indices is not None:
+            if isinstance(self.data, np.ndarray) or scipy.sparse.issparse(self.data):
+                self.data = self.data[self.used_indices, :]
+            elif isinstance(self.data, DataFrame):
+                self.data = self.data.iloc[self.used_indices]
+        return self.data
 
     def get_group(self):
         """Get the group of the Dataset.
